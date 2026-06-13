@@ -1,11 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from database import database
-from schemas import UsearCreate, UserResponse, UserLogin
-# from passlib.context import CryptContext
+from schemas import UserCreate, UserResponse, UserLogin
+from security import create_access_token
+from fastapi.security import OAuth2PasswordRequestForm
 import bcrypt
-
-# #create context for password hashing
-# pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 #create authentication router
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -27,7 +25,7 @@ def verify_password(plain_password, hashed_password):
 
 #user Registration endpoint
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register_user(user: UsearCreate):
+async def register_user(user: UserCreate):
     #check email if already have or not
     query = "SELECT * FROM users WHERE email = :email"
     existing_user = await database.fetch_one(query=query, values={"email":user.email})
@@ -60,10 +58,10 @@ async def register_user(user: UsearCreate):
 
 #user login endpoint
 @router.post("/login")
-async def login_user(user: UserLogin):
+async def login_user(user: OAuth2PasswordRequestForm = Depends()):
     #search user in database
     query = "SELECT * FROM users WHERE email=:email"
-    db_user = await database.fetch_one(query=query, values={"email":user.email})
+    db_user = await database.fetch_one(query=query, values={"email":user.username})
 
     #verify_password will match password directly with bcrypt
     if not db_user or not verify_password(user.password, db_user["password"]):
@@ -72,12 +70,18 @@ async def login_user(user: UserLogin):
             detail="Wrong Username or Password"
         )
     
+    #jwt token creation if login credentials will match
+    #we put user id, email and role into payload
+    token_data = {
+        "user_id":db_user["user_id"],
+        "email":db_user["email"],
+        "role":db_user["role"]
+    }
+
+    access_token = create_access_token(data=token_data)
+
+    #send token to frontend
     return {
-        "message":"Login Successfull",
-        "user":{
-            "id":db_user['user_id'],
-            "name":db_user['name'],
-            "email":db_user['email'],
-            "role":db_user['role']
-        }
+        "access_token": access_token,
+        "token_type": "bearer"
     }

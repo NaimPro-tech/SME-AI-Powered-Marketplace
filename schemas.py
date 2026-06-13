@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 
 #user registration data
-class UsearCreate(BaseModel):
+class UserCreate(BaseModel):
     name:str
     email:EmailStr
     password:str

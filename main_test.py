@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from database import database
+from security import get_current_user
 
 app = FastAPI(
     title="AI-Powered Dynamic Marketplace API",
@@ -32,4 +33,13 @@ def home():
             "Buyer Recomendations",
             "Bidding System"
         ]
+    }
+
+@app.get("/users/me")
+async def get_my_profile(current_user: dict=Depends(get_current_user)):
+    """This router is completely secure
+        without token it will hit 401 error"""
+    return {
+        "message": "Welcome to Dashboard",
+        "user_details": current_user
     }
