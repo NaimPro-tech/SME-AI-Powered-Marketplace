@@ -24,6 +24,12 @@ class UserResponse(BaseModel):
     class config:
         from_attributes = True
 
+#to give basic info of a seller
+class SellerInfo(BaseModel):
+    user_id: int
+    name: str
+    email: EmailStr
+
 # to create pydantic schemas for product
 class ProductCreate(BaseModel):
     title:str
@@ -46,6 +52,7 @@ class ProductResponse(BaseModel):
     view_count:int
     sales_count:int
     created_at:datetime
+    seller: SellerInfo
 
     class Config:
         from_attributes = True

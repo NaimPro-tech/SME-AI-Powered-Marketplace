@@ -36,18 +36,34 @@ async def create_product(product: ProductCreate, current_user: dict = Depends(ge
 
 @router.get("/", response_model=list[ProductResponse])
 async def get_all_products():
-    query = "SELECT * FROM products"
-    return await database.fetch_all(query=query)
+    query = """SELECT p.*, u.user_id, u.name, u.email
+                FROM products p
+                JOIN users u ON p.seller_id = u.user_id"""
+    rows =  await database.fetch_all(query=query)
+    formatted_products = []
+    for row in rows:
+        product_dict = dict(row)
+        product_dict["seller"] = {
+            "user_id":row["user_id"],
+            "name":row["name"],
+            "email":row["email"]
+        }
+        formatted_products.append(product_dict)
+
+    return formatted_products
 
 #search by product id endpoint
 @router.get("/{product_id}", response_model=ProductResponse)
 async def get_single_product(product_id: int):
-    #check the product is in database
-    query = "SELECT *  FROM products WHERE  product_id = :product_id"
-    product = await database.fetch_one(query=query, values={"product_id: product_id"})
+    #check the product is in database and sql join to get info of user also
+    query = """SELECT p.*, u.user_id, u.name, u.email
+                FROM products p
+                JOIN users u ON p.seller_id = u.user_id
+                WHERE  p.product_id = :product_id"""
+    row = await database.fetch_one(query=query, values={"product_id": product_id})
 
 
-    if not product:
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             details="Prouct not found"
@@ -56,6 +72,13 @@ async def get_single_product(product_id: int):
     update_view_query = "UPDATE products SET view_count = view_count+1 WHERE product_id = :product_id"
     await database.execute(query=update_view_query, values={"product_id": product_id})
 
+    #to match the data with pydantic format
+    product = dict(row)
+    product["seller"] = {
+        "user_id":row["user_id"],
+        "name":row["name"],
+        "email":row["email"]
+    }
     return product
 
 #product update endpoint
@@ -68,7 +91,7 @@ async def update_product(product_id: int, product: ProductCreate, current_user: 
     if existing_product["seller_id"] != current_user.get("user_id"):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            details="Product not found"
+            detail="Product not found"
         )
     
     update_query = """
@@ -97,7 +120,7 @@ async def delete_product(product_id: int, current_user: dict = Depends(get_curre
 
     #check if product
     find_query = "SELECT * FROM products WHERE product_id = :product_id"
-    existing_product = await database.fetch_one(query=find_query, values={"product_id: product_id"})
+    existing_product = await database.fetch_one(query=find_query, values={"product_id": product_id})
 
     if not existing_product:
         raise HTTPException(
