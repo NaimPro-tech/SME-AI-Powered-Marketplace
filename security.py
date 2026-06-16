@@ -34,6 +34,7 @@ def create_access_token(data: dict):
 #path where frontend/porstman will get the token 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
+#logic of token verification/decode
 def get_current_user(token: str=Depends(oauth2_scheme)):
     """this function will take token from request header.
         and will decode with secret_key then it will return info of user"""
@@ -46,13 +47,14 @@ def get_current_user(token: str=Depends(oauth2_scheme)):
 
     try:
         #break the token to get insider(payload) information
-        payload = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHM)
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
         user_id: int = payload.get("user_id")
         email: str = payload.get("email")
         role: str = payload.get("role")
 
         #if token is blank
-        if user_id or email is None:
+        if user_id is None or email is None:
             raise credentials_exception
         
         return {"user_id":user_id, "email":email, "role":role}
@@ -61,7 +63,7 @@ def get_current_user(token: str=Depends(oauth2_scheme)):
         #after 30 mins of token generation
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session Expired."
+            detail="Session Expired. Please Login Again."
         )
     except jwt.PyJWTError:
         #if anyone try to rewrite or give fraud token

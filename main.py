@@ -2,12 +2,14 @@ from fastapi import FastAPI, Depends
 from auth import router as auth_router
 from database import database
 from security import get_current_user
+from products import router as product_router
 
 app = FastAPI(
     title="AI-Powered Dynamic Marketplace API",
     description="Intelligent Insight, Bidding System and Competitor Analysis Platform",
     version="1.0.0"
 )
+app.include_router(product_router)
 
 @app.on_event("startup")
 async def startup():
@@ -37,3 +39,4 @@ async def get_my_profile(current_user: dict=Depends(get_current_user)):
         "message": "Welcome to Dashboard",
         "user_details": current_user
     }
+

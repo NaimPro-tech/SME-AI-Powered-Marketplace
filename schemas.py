@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from datetime import datetime
 
 #user registration data
 class UserCreate(BaseModel):
@@ -21,4 +22,30 @@ class UserResponse(BaseModel):
     role:str
 
     class config:
+        from_attributes = True
+
+# to create pydantic schemas for product
+class ProductCreate(BaseModel):
+    title:str
+    description:Optional[str]=None
+    base_price: float
+    discount_price:Optional[float]=0.00
+    is_offer_active:Optional[bool]=False
+    category:Optional[str]=None
+
+#return fields when it get back from database
+class ProductResponse(BaseModel):
+    product_id: int
+    title: str
+    description:Optional[str]
+    base_price:float
+    discount_price:float
+    seller_id:int
+    is_offer_active:bool
+    category:Optional[str]
+    view_count:int
+    sales_count:int
+    created_at:datetime
+
+    class Config:
         from_attributes = True
