@@ -8,31 +8,43 @@ router = APIRouter(prefix="/products", tags=["Products"])
 #endpoint of new product(Only for sellers)
 @router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
 async def create_product(product: ProductCreate, current_user: dict = Depends(get_current_user)):
-
-    #if current user is seller
+    # if current user is seller 
     if current_user.get("role") != "seller":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only sellers can add products."
         )
-    
+        
     query = """INSERT INTO products (title, description, base_price, discount_price, is_offer_active, seller_id, category)
-                Values(:title, :description, :base_price, :discount_price, :is_offer_active, :seller_id, :category)
-    
-                RETURNING product_id, title, description, base_price, discount_price, is_offer_active, seller_id, category, view_count, sales_count, created_at"""
-    
+               VALUES(:title, :description, :base_price, :discount_price, :is_offer_active, :seller_id, :category)
+               RETURNING product_id, title, description, base_price, discount_price, is_offer_active, seller_id, category, view_count, sales_count, created_at"""
+               
     values = {
-        "title":product.title,
-        "description":product.description,
-        "base_price":product.base_price,
-        "discount_price":product.discount_price,
-        "is_offer_active":product.is_offer_active,
-        "seller_id":current_user.get("user_id"), #get user id from payload(token)
-        "category":product.category
+        "title": product.title,
+        "description": product.description,
+        "base_price": product.base_price,
+        "discount_price": product.discount_price,
+        "is_offer_active": product.is_offer_active,
+        "seller_id": current_user.get("user_id"), # get user id from payload(token)
+        "category": product.category
     }
 
+    # insert product into database
     new_product = await database.fetch_one(query=query, values=values)
-    return new_product
+    
+    # fetch name and info of seller
+    user_query = "SELECT name, email FROM users WHERE user_id = :user_id"
+    seller_info = await database.fetch_one(query=user_query, values={"user_id": current_user.get("user_id")})
+    
+    
+    response_data = dict(new_product)
+    response_data["seller"] = {
+        "user_id":current_user.get("user_id"),
+        "name": seller_info["name"],
+        "email": seller_info["email"]
+    }
+    
+    return response_data
 
 @router.get("/", response_model=list[ProductResponse])
 async def get_all_products():
@@ -112,8 +124,19 @@ async def update_product(product_id: int, product: ProductCreate, current_user: 
         "category": product.category
     }
 
+
     updated_product = await database.fetch_one(query=update_query, values=values)
-    return updated_product
+
+    user_query = "SELECT name, email FROM users WHERE user_id = :user_id"
+    user_data = await database.fetch_one(query=user_query, values={"user_id": current_user.get("user_id")})
+
+    updated_product_list = dict(updated_product)
+    updated_product_list['seller'] = {
+        "user_id":current_user.get("user_id"),
+        "name":user_data["name"],
+        "email":user_data["email"]
+    }
+    return updated_product_list
 
 @router.delete("/{product_id}", status_code=status.HTTP_200_OK)
 async def delete_product(product_id: int, current_user: dict = Depends(get_current_user)):
