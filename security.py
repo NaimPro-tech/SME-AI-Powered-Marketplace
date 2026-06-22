@@ -69,3 +69,24 @@ def get_current_user(token: str=Depends(oauth2_scheme)):
         #if anyone try to rewrite or give fraud token
         raise credentials_exception
     
+
+#reset password token and verify function
+
+def create_password_reset_token(email: str):
+
+    expire =datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode = {"sub": email, "exp": expire, "scope": "password_reset"}
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithms=ALGORITHM)
+
+    return encoded_jwt
+
+def verify_password_reset_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("scope") == "password_reset":
+            return payload.get("sub")
+        return None
+    except jwt.PyJWTError:
+        return None
+
+    

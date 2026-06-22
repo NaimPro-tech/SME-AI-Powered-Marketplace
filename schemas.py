@@ -56,3 +56,18 @@ class ProductResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+#password update, forget & reset scheme
+
+class PasswordUpdate(BaseModel):
+    old_password: str
+    new_password: str
+
+class ForgetPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPassword(BaseModel):
+    token: str
+    new_password: str
+    
